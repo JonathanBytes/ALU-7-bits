@@ -6,35 +6,52 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
 
-@cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
-
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, unit="us")
-    cocotb.start_soon(clock.start())
-
-    # Reset
-    dut._log.info("Reset")
+async def reset_dut(dut):
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 2)
     dut.rst_n.value = 1
-
-    dut._log.info("Test project behavior")
-
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
-
-    # Wait for one clock cycle to see the output values
     await ClockCycles(dut.clk, 1)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+async def shift_operands_lsb_first(dut, a, b, op):
+    for idx in range(7):
+        bit = (a >> idx) & 0x1
+        dut.ui_in.value = (op << 1) | bit
+        await ClockCycles(dut.clk, 1)
+
+    for idx in range(7):
+        bit = (b >> idx) & 0x1
+        dut.ui_in.value = (op << 1) | bit
+        await ClockCycles(dut.clk, 1)
+
+
+@cocotb.test()
+async def test_project(dut):
+    dut._log.info("Start")
+
+    clock = Clock(dut.clk, 10, unit="us")
+    cocotb.start_soon(clock.start())
+
+    test_vectors = [
+        (0b0101011, 0b0010110, 0b000, lambda a, b: (a + b) & 0x7F),  # ADD
+        (0b0101011, 0b0010110, 0b001, lambda a, b: a & b),            # AND
+        (0b0101011, 0b0010110, 0b010, lambda a, b: a | b),            # OR
+        (0b0101011, 0b0010110, 0b011, lambda a, b: a ^ b),            # XOR
+        (0b0101011, 0b0010110, 0b100, lambda a, b: (a - b) & 0x7F),  # SUB
+    ]
+
+    for a, b, op, expected_fn in test_vectors:
+        await reset_dut(dut)
+        await shift_operands_lsb_first(dut, a, b, op)
+
+        expected = expected_fn(a, b)
+        result = int(dut.uo_out.value) & 0x7F
+        done = (int(dut.uo_out.value) >> 7) & 0x1
+
+        assert done == 1, f"Done should be high after 14 bits for op {op:03b}"
+        assert result == expected, (
+            f"Unexpected result for op {op:03b}: got {result:07b}, expected {expected:07b}"
+        )
