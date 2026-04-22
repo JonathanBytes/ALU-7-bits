@@ -9,7 +9,7 @@ module alu7_serial (
 
   reg [6:0] A;          // Registro del operando A
   reg [6:0] B;          // Registro del operando B
-  reg [2:0] op_reg;     // Operacion latcheada durante la carga serial
+  reg [2:0] op_reg;     // Operacion latcheada al inicio de la carga serial
   reg [3:0] bit_count;  // Cuenta 14 bits seriales de entrada
 
   always @(posedge CLK or negedge RST_n) begin
@@ -21,8 +21,10 @@ module alu7_serial (
       Data_out <= 7'd0;
       Done <= 1'b0;
     end else if (!Done) begin
-      // Latch de op durante toda la carga de bits.
-      op_reg <= op;
+      // Latch de op una sola vez, junto con el primer bit de A.
+      if (bit_count == 4'd0) begin
+        op_reg <= op;
+      end
 
       if (bit_count < 4'd7) begin
         // Los primeros 7 bits (LSB->MSB) son de A.

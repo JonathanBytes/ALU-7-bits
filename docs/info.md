@@ -19,16 +19,17 @@ The ALU behavior matches the guide:
 
 1. `rst_n = 0` resets internal state (`A`, `B`, `Data_out`, counter, and `Done`).
 2. With `rst_n = 1`, each rising clock edge captures one serial bit on `Bit_in`.
-3. Bits are loaded **LSB-first**:
+3. `op[2:0]` is sampled with the first incoming bit and kept for the full 14-bit transfer.
+4. Bits are loaded **LSB-first**:
    - First 7 bits -> operand `A`
    - Next 7 bits -> operand `B`
-4. After the 14th bit, the operation selected by `op[2:0]` is executed:
-   - `000`: `A + B`
-   - `001`: `A & B`
-   - `010`: `A | B`
-   - `011`: `A ^ B`
-   - `100`: `A - B`
-5. `Data_out` is updated in parallel and `Done` goes high.
+5. After the 14th bit, the selected operation is executed:
+    - `000`: `A + B`
+    - `001`: `A & B`
+    - `010`: `A | B`
+    - `011`: `A ^ B`
+    - `100`: `A - B`
+6. `Data_out` is updated in parallel and `Done` goes high.
 
 On Tiny Tapeout top-level pins:
 - `ui[0]` = `Bit_in`
@@ -40,7 +41,7 @@ On Tiny Tapeout top-level pins:
 ## How to test
 
 1. Apply reset (`rst_n = 0`) for at least one clock edge, then release (`rst_n = 1`).
-2. Set `op[2:0]`.
+2. Set `op[2:0]` before shifting the first bit (it is latched on that first bit).
 3. Shift in 14 bits through `Bit_in`, one bit per rising edge:
    - Bits 1-7: `A[0]` to `A[6]` (LSB-first)
    - Bits 8-14: `B[0]` to `B[6]` (LSB-first)

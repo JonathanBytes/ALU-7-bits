@@ -26,7 +26,8 @@ Operations:
 ## Data loading sequence
 
 1. Reset with `rst_n = 0`, then release reset (`rst_n = 1`).
-2. Shift in 14 bits on `ui[0]`, one per rising edge:
+2. Set `op[2:0]` before starting the transfer. The ALU samples `op` with the first input bit.
+3. Shift in 14 bits on `ui[0]`, one per rising edge:
    - First 7 bits: operand A (`A[0]` to `A[6]`)
    - Next 7 bits: operand B (`B[0]` to `B[6]`)
-3. After the 14th bit, `Done` goes high and `uo[6:0]` contains the ALU result.
+4. After the 14th bit, `Done` goes high and `uo[6:0]` contains the ALU result.
