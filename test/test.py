@@ -3,7 +3,7 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly
 
 
 async def reset_dut(dut):
@@ -12,8 +12,8 @@ async def reset_dut(dut):
     dut.uio_in.value = 0
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 2)
+    await FallingEdge(dut.clk)
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 1)
 
 
 async def shift_operands_lsb_first(dut, a, b, op):
@@ -46,6 +46,7 @@ async def test_project(dut):
     for a, b, op, expected_fn in test_vectors:
         await reset_dut(dut)
         await shift_operands_lsb_first(dut, a, b, op)
+        await ReadOnly()
 
         expected = expected_fn(a, b)
         result = int(dut.uo_out.value) & 0x7F
@@ -55,3 +56,4 @@ async def test_project(dut):
         assert result == expected, (
             f"Unexpected result for op {op:03b}: got {result:07b}, expected {expected:07b}"
         )
+        await FallingEdge(dut.clk)
