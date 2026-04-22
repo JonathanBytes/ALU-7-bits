@@ -7,39 +7,46 @@ module alu7_serial (
     output reg        Done       // Señal de finalización de la operación
 );
 
-  reg [6:0] A;          // Registro para el primer operando
-  reg [6:0] B;          // Registro para el segundo operando
-  reg [3:0] bit_count;  // Cuenta los 14 bits seriales de entrada
+  reg [6:0] A;          // Registro del operando A
+  reg [6:0] B;          // Registro del operando B
+  reg [2:0] op_reg;     // Operacion latcheada durante la carga serial
+  reg [3:0] bit_count;  // Cuenta 14 bits seriales de entrada
+
+  wire [6:0] b_next = {Bit_in, B[6:1]};
 
   always @(posedge CLK or negedge RST_n) begin
     if (!RST_n) begin
-      A <= 7'b0;         // Reiniciar A
-      B <= 7'b0;         // Reiniciar B
-      bit_count <= 4'b0; // Reiniciar contador de bits
-      Data_out <= 7'b0;  // Reiniciar salida de datos
-      Done <= 1'b0;      // Reiniciar señal de finalización
+      A <= 7'd0;
+      B <= 7'd0;
+      op_reg <= 3'd0;
+      bit_count <= 4'd0;
+      Data_out <= 7'd0;
+      Done <= 1'b0;
     end else if (!Done) begin
+      // Latch de op durante toda la carga de bits.
+      op_reg <= op;
+
       if (bit_count < 4'd7) begin
-        // Los primeros 7 bits (LSB a MSB) pertenecen a A.
-        A[bit_count] <= Bit_in;
+        // Captura LSB-first para A.
+        A <= {Bit_in, A[6:1]};
         bit_count <= bit_count + 4'd1;
       end else if (bit_count < 4'd14) begin
-        // Los siguientes 7 bits (LSB a MSB) pertenecen a B.
-        B[bit_count-4'd7] <= Bit_in;
+        // Captura LSB-first para B.
+        B <= b_next;
+        bit_count <= bit_count + 4'd1;
 
-        // Después del bit 14, producir el resultado en paralelo y activar Done.
+        // Al recibir el bit 14, resolver y publicar resultado.
         if (bit_count == 4'd13) begin
-          case (op)
-            3'b000:  Data_out <= A + {Bit_in, B[5:0]};  // Suma
-            3'b001:  Data_out <= A & {Bit_in, B[5:0]};  // AND
-            3'b010:  Data_out <= A | {Bit_in, B[5:0]};  // OR
-            3'b011:  Data_out <= A ^ {Bit_in, B[5:0]};  // XOR
-            3'b100:  Data_out <= A - {Bit_in, B[5:0]};  // Resta
-            default: Data_out <= 7'b0;                  // Operación no definida
+          case (op_reg)
+            3'b000:  Data_out <= (A + b_next) & 7'h7F;  // Suma
+            3'b001:  Data_out <= A & b_next;            // AND
+            3'b010:  Data_out <= A | b_next;            // OR
+            3'b011:  Data_out <= A ^ b_next;            // XOR
+            3'b100:  Data_out <= (A - b_next) & 7'h7F;  // Resta
+            default: Data_out <= 7'd0;
           endcase
           Done <= 1'b1;
         end
-        bit_count <= bit_count + 4'd1;
       end
     end
   end
