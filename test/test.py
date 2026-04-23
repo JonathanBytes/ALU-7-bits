@@ -46,6 +46,7 @@ async def test_project(dut):
     for a, b, op, expected_fn in test_vectors:
         await reset_dut(dut)
         await shift_operands_lsb_first(dut, a, b, op)
+        await ClockCycles(dut.clk, 1)
         await ReadOnly()
 
         expected = expected_fn(a, b)
