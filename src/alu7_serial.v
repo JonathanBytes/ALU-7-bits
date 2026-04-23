@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Jonathan Cardona Ramírez
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+`default_nettype none
+
 module alu7_serial (
     input  wire       CLK,
     input  wire       RST_n,     // Reset activo en bajo
